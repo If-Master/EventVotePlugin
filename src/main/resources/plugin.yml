@@ -1,0 +1,18 @@
+name: EventVotePlugin
+version: 1.0
+main: me.kanuunankuulasplugineventvote.eventVotePlugin.EventVotePlugin
+api-version: 1.21
+author: Kanuunankuula
+description: A plugin for creating and managing votes
+folia-supported: true
+
+commands:
+  vote:
+    description: Create and manage votes
+    usage: /eventvote <subcommand>
+    aliases: [voting, poll]
+
+permissions:
+  vote.admin:
+    description: Allows deletion of any vote
+    default: op

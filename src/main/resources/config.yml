@@ -1,0 +1,13 @@
+# Vote Settings
+broadcast-votes: false
+auto-remove-expired: false
+
+# Storage Settings
+storage:
+  use-mysql: false
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "minecraft"
+    username: "root"
+    password: ""
