@@ -51,9 +51,9 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
 
         loadVotes();
 
-        if (getCommand("Eventvote") != null) {
-            getCommand("Eventvote").setExecutor(this);
-            getCommand("Eventvote").setTabCompleter(this);
+        if (getCommand("eventvote") != null) {
+            getCommand("eventvote").setExecutor(this);
+            getCommand("eventvote").setTabCompleter(this);
         } else {
             getLogger().severe("Could not register 'Eventvote' command! Check your plugin.yml");
             setEnabled(false);
@@ -237,7 +237,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
 
     private boolean handleCreate(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage("§cUsage: /vote create <name> <option1> <option2> [option3] ...");
+            player.sendMessage("§cUsage: /eventvote create <name> <option1> <option2> [option3] ...");
             return true;
         }
 
@@ -256,19 +256,19 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
         activeVotes.put(name, new Vote(name, options, player.getName()));
         player.sendMessage("§aVote created: §e" + name);
         player.sendMessage("§7Options: §f" + String.join(", ", options));
-        player.sendMessage("§7Use §e/vote length <duration>§7 to set duration, then §e/vote start§7 to begin.");
+        player.sendMessage("§7Use §e/eventvote length <duration>§7 to set duration, then §e/eventvote start§7 to begin.");
         return true;
     }
 
     private boolean handleLength(Player player, String[] args) {
         if (args.length != 2) {
-            player.sendMessage("§cUsage: /vote length <1m|5m|30m|1h|12h|1d|1w>");
+            player.sendMessage("§cUsage: /eventvote length <1m|5m|30m|1h|12h|1d|1w>");
             return true;
         }
 
         Vote vote = getLatestVote();
         if (vote == null) {
-            player.sendMessage("§cNo vote created. Use §e/vote create§c first.");
+            player.sendMessage("§cNo vote created. Use §e/eventvote create§c first.");
             return true;
         }
 
@@ -291,12 +291,12 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
     private boolean handleStart(Player player, String[] args) {
         Vote vote = getLatestVote();
         if (vote == null) {
-            player.sendMessage("§cNo vote created. Use §e/vote create§c first.");
+            player.sendMessage("§cNo vote created. Use §e/eventvote create§c first.");
             return true;
         }
 
         if (vote.getDuration() == 0) {
-            player.sendMessage("§cSet duration first with §e/vote length <duration>");
+            player.sendMessage("§cSet duration first with §e/eventvote length <duration>");
             return true;
         }
 
@@ -310,7 +310,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
 
         broadcastMessage("§6§l[VOTE] §a" + player.getName() + " started a vote: §e" + vote.getName());
         broadcastMessage("§7Options: §f" + String.join("§7, §f", vote.getOptions()));
-        broadcastMessage("§7Use §e/vote <option>§7 to cast your vote!");
+        broadcastMessage("§7Use §e/eventvote <option>§7 to cast your vote!");
 
         return true;
     }
@@ -323,7 +323,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
                 return true;
             }
 
-            if (!player.hasPermission("vote.admin") && !activeVote.getCreator().equals(player.getName())) {
+            if (!player.hasPermission("eventvote.admin") && !activeVote.getCreator().equals(player.getName())) {
                 player.sendMessage("§cYou can only end votes you created!");
                 return true;
             }
@@ -342,7 +342,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
                 return true;
             }
 
-            if (!player.hasPermission("vote.admin") && !vote.getCreator().equals(player.getName())) {
+            if (!player.hasPermission("eventvote.admin") && !vote.getCreator().equals(player.getName())) {
                 player.sendMessage("§cYou can only end votes you created!");
                 return true;
             }
@@ -365,7 +365,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
 
             return true;
         } else {
-            player.sendMessage("§cUsage: /vote end [name]");
+            player.sendMessage("§cUsage: /eventvote end [name]");
             return true;
         }
     }
@@ -393,7 +393,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
 
     private boolean handleResults(Player player, String[] args) {
         if (args.length != 2) {
-            player.sendMessage("§cUsage: /vote results <name>");
+            player.sendMessage("§cUsage: /eventvote results <name>");
             return true;
         }
 
@@ -451,7 +451,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
 
     private boolean handleDelete(Player player, String[] args) {
         if (args.length != 2) {
-            player.sendMessage("§cUsage: /vote delete <name>");
+            player.sendMessage("§cUsage: /eventvote delete <name>");
             return true;
         }
 
@@ -461,7 +461,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
             return true;
         }
 
-        if (!player.hasPermission("vote.admin") && !vote.getCreator().equals(player.getName())) {
+        if (!player.hasPermission("eventvote.admin") && !vote.getCreator().equals(player.getName())) {
             player.sendMessage("§cYou can only delete votes you created!");
             return true;
         }
@@ -474,7 +474,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
     private boolean handleVote(Player player, String option, String ip, String uuid) {
         Vote vote = getActiveVote();
         if (vote == null) {
-            player.sendMessage("§cNo active vote running. Use §e/vote list§c to see available votes.");
+            player.sendMessage("§cNo active vote running. Use §e/eventvote list§c to see available votes.");
             return true;
         }
 
