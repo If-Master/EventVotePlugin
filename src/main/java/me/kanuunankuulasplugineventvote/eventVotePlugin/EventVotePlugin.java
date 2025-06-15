@@ -236,6 +236,10 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
     }
 
     private boolean handleCreate(Player player, String[] args) {
+        if (!player.hasPermission("eventvote.create")) {
+            player.sendMessage("§4 Missing permissions ");
+            return true;
+        }
         if (args.length < 3) {
             player.sendMessage("§cUsage: /eventvote create <name> <option1> <option2> [option3] ...");
             return true;
@@ -261,6 +265,11 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
     }
 
     private boolean handleLength(Player player, String[] args) {
+        if (!player.hasPermission("eventvote.create")) {
+            player.sendMessage("§4 Missing permissions ");
+            return true;
+        }
+
         if (args.length != 2) {
             player.sendMessage("§cUsage: /eventvote length <1m|5m|30m|1h|12h|1d|1w>");
             return true;
@@ -289,6 +298,11 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
     }
 
     private boolean handleStart(Player player, String[] args) {
+        if (!player.hasPermission("eventvote.create")) {
+            player.sendMessage("§4 Missing permissions ");
+            return true;
+        }
+
         Vote vote = getLatestVote();
         if (vote == null) {
             player.sendMessage("§cNo vote created. Use §e/eventvote create§c first.");
@@ -316,6 +330,11 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
     }
 
     private boolean handleEnd(Player player, String[] args) {
+        if (!player.hasPermission("eventvote.create")) {
+            player.sendMessage("§4 Missing permissions ");
+            return true;
+        }
+
         if (args.length == 1) {
             Vote activeVote = getActiveVote();
             if (activeVote == null) {
@@ -450,6 +469,10 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
     }
 
     private boolean handleDelete(Player player, String[] args) {
+        if (!player.hasPermission("eventvote.create")) {
+            player.sendMessage("§4 Missing permissions ");
+            return true;
+        }
         if (args.length != 2) {
             player.sendMessage("§cUsage: /eventvote delete <name>");
             return true;
