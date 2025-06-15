@@ -1,68 +1,59 @@
 package me.kanuunankuulasplugineventvote.eventVotePlugin;
 
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 public class UniversalScheduler {
-    private final JavaPlugin plugin;
+    private final Plugin plugin;
     private final boolean isFolia;
 
-    public UniversalScheduler(JavaPlugin plugin, boolean isFolia) {
+    public UniversalScheduler(Plugin plugin, boolean isFolia) {
         this.plugin = plugin;
         this.isFolia = isFolia;
     }
 
-    public void runTimer(Runnable task, long delay, long period) {
+    public void runSync(Runnable task) {
         if (isFolia) {
-            Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, (scheduledTask) -> task.run(), delay, period);
+            try {
+                Class<?> foliaGlobalRegionScheduler = Class.forName("io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler");
+                Object scheduler = Bukkit.getServer().getClass().getMethod("getGlobalRegionScheduler").invoke(Bukkit.getServer());
+                foliaGlobalRegionScheduler.getMethod("execute", Plugin.class, Runnable.class).invoke(scheduler, plugin, task);
+            } catch (Exception e) {
+                Bukkit.getScheduler().runTask(plugin, task);
+            }
         } else {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    task.run();
-                }
-            }.runTaskTimer(plugin, delay, period);
+            Bukkit.getScheduler().runTask(plugin, task);
         }
     }
 
     public void runAsync(Runnable task) {
         if (isFolia) {
-            Bukkit.getAsyncScheduler().runNow(plugin, (scheduledTask) -> task.run());
+            try {
+                Class<?> foliaAsyncScheduler = Class.forName("io.papermc.paper.threadedregions.scheduler.AsyncScheduler");
+                Object scheduler = Bukkit.getServer().getClass().getMethod("getAsyncScheduler").invoke(Bukkit.getServer());
+                foliaAsyncScheduler.getMethod("runNow", Plugin.class, Runnable.class).invoke(scheduler, plugin, task);
+            } catch (Exception e) {
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, task);
+            }
         } else {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    task.run();
-                }
-            }.runTaskAsynchronously(plugin);
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, task);
         }
     }
 
-    public void runSync(Runnable task) {
+    public BukkitTask runTimer(Runnable task, long delay, long period) {
         if (isFolia) {
-            Bukkit.getGlobalRegionScheduler().run(plugin, (scheduledTask) -> task.run());
+            try {
+                Class<?> foliaGlobalRegionScheduler = Class.forName("io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler");
+                Object scheduler = Bukkit.getServer().getClass().getMethod("getGlobalRegionScheduler").invoke(Bukkit.getServer());
+                return (BukkitTask) foliaGlobalRegionScheduler.getMethod("runAtFixedRate", Plugin.class, Runnable.class, long.class, long.class)
+                        .invoke(scheduler, plugin, task, delay, period);
+            } catch (Exception e) {
+                return Bukkit.getScheduler().runTaskTimer(plugin, task, delay, period);
+            }
         } else {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    task.run();
-                }
-            }.runTask(plugin);
-        }
-    }
-
-    public void runPlayerSync(Player player, Runnable task) {
-        if (isFolia) {
-            player.getScheduler().run(plugin, (scheduledTask) -> task.run(), null);
-        } else {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    task.run();
-                }
-            }.runTask(plugin);
+            return Bukkit.getScheduler().runTaskTimer(plugin, task, delay, period);
         }
     }
 }
