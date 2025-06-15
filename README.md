@@ -179,28 +179,9 @@ auto-remove-expired: true       # Auto-delete expired votes
 - For MySQL: verify connection stability
 - Check server logs for error messages
 
-### Debug Mode
-Enable detailed logging by adding this to your server startup:
-```
--Dpaper.debug=true
-```
-
-## API for Developers
-
-The plugin provides events and methods for integration:
-
-```java
-// Get active votes
-Map<String, Vote> activeVotes = plugin.getActiveVotes();
-
-// Check if player can vote
-boolean canVote = vote.checkvotestage(ip, uuid);
-
-// Get vote results
-Map<String, Integer> results = vote.getResults();
-```
-
 ## Version History
+### v1.0.1
+- Permission based creation added
 
 ### v1.0
 - Initial release
@@ -225,6 +206,6 @@ This plugin is provided as-is for Minecraft server use. Please respect the autho
 ---
 
 **Author:** Kanuunankuula  
-**Version:** 1.0  
+**Version:** 1.0.1  
 **Minecraft Version:** 1.21+  
 **Server Types:** Bukkit, Spigot, Paper, Folia
