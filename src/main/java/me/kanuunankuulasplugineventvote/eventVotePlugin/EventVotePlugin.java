@@ -7,7 +7,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.*;
 import java.sql.*;
@@ -62,7 +61,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
             getCommand("eventvote").setExecutor(this);
             getCommand("eventvote").setTabCompleter(this);
         } else {
-            getLogger().severe("Could not register 'Eventvote' command! Check your plugin.yml");
+            getLogger().severe("Could not register 'Eventvote' command!");
             setEnabled(false);
             return;
         }
@@ -167,8 +166,8 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
         }
     }
     private boolean handleUpdate(Player player, String[] args) {
-        if (!player.hasPermission("eventvote.admin")) {
-            player.sendMessage("§4Missing permissions - You need eventvote.admin to update the plugin");
+        if (!player.hasPermission("eventvote.update")) {
+            player.sendMessage("§4Missing permissions - You need eventvote.update to update the plugin");
             return true;
         }
 
