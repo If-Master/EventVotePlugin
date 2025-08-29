@@ -18,6 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 public final class EventVotePlugin extends JavaPlugin implements CommandExecutor, TabCompleter {
 
@@ -30,6 +32,11 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
 
     private Connection connection;
     private boolean useMySQL;
+
+    private static final String SPIGOT_RESOURCE_ID = "126080";
+    private final String CURRENT_VERSION = getDescription().getVersion();;
+    private static final String UPDATE_URL = "https://api.spiget.org/v2/resources/" + SPIGOT_RESOURCE_ID + "/download";
+    private static final String VERSION_URL = "https://api.spiget.org/v2/resources/" + SPIGOT_RESOURCE_ID + "/versions/latest";
 
     @Override
     public void onEnable() {
@@ -123,6 +130,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
             return true;
         }
 
+
         Player player = (Player) sender;
         String actualIP = getPlayerIP(player);
         String uuid = player.getUniqueId().toString();
@@ -149,11 +157,267 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
                 return handleList(player);
             case "delete":
                 return handleDelete(player, args);
+            case "update":
+                return handleUpdate(player, args);
             case "help":
                 showHelp(player);
                 return true;
             default:
                 return handleVote(player, sub, actualIP, uuid);
+        }
+    }
+    private boolean handleUpdate(Player player, String[] args) {
+        if (!player.hasPermission("eventvote.admin")) {
+            player.sendMessage("§4Missing permissions - You need eventvote.admin to update the plugin");
+            return true;
+        }
+
+        if (args.length == 1) {
+            player.sendMessage("§eChecking for updates...");
+            scheduler.runAsync(() -> checkForUpdates(player));
+            return true;
+        } else if (args.length == 2 && args[1].equalsIgnoreCase("force")) {
+            player.sendMessage("§eForce updating plugin...");
+            scheduler.runAsync(() -> downloadAndUpdate(player));
+            return true;
+        } else {
+            player.sendMessage("§cUsage: /eventvote update [force]");
+            player.sendMessage("§7- §e/eventvote update§7 - Check for updates");
+            player.sendMessage("§7- §e/eventvote update force§7 - Force download");
+            return true;
+        }
+    }
+
+    private void checkForUpdates(Player player) {
+        try {
+            String latestVersion = getLatestVersion();
+            if (latestVersion == null) {
+                scheduler.runSync(() -> player.sendMessage("§cFailed to check for updates. Please try again later."));
+                return;
+            }
+
+            scheduler.runSync(() -> {
+                player.sendMessage("§6§l=== Update Check ===");
+                player.sendMessage("§7Current Version: §e" + CURRENT_VERSION);
+                player.sendMessage("§7Latest Version: §e" + latestVersion);
+
+                if (isNewerVersion(latestVersion, CURRENT_VERSION)) {
+                    player.sendMessage("§a§lUpdate Available!");
+                    player.sendMessage("§7Use §e/eventvote update force§7 to download");
+                    player.sendMessage("§7Download URL: §fhttps://www.spigotmc.org/resources/eventvoteplugin.126080/");
+                } else {
+                    player.sendMessage("§aYou are running the latest version!");
+                }
+            });
+
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "Failed to check for updates", e);
+            scheduler.runSync(() -> player.sendMessage("§cError checking for updates: " + e.getMessage()));
+        }
+    }
+
+    private void downloadAndUpdate(Player player) {
+        try {
+            scheduler.runSync(() -> {
+                player.sendMessage("§eDownloading latest version...");
+                broadcastMessage("§6§l[UPDATE] §eServer is downloading plugin update...");
+            });
+
+            File pluginFile = getPluginFile();
+            if (pluginFile == null) {
+                scheduler.runSync(() -> player.sendMessage("§cCould not locate current plugin file!"));
+                return;
+            }
+
+            File tempFile = new File(getDataFolder().getParentFile().getParentFile(), "EventVotePlugin-new.jar");
+
+            if (downloadFile(UPDATE_URL, tempFile)) {
+                scheduler.runSync(() -> {
+                    player.sendMessage("§aDownload completed!");
+                    player.sendMessage("§eReplacing plugin file...");
+                });
+
+                saveVotes();
+
+                Files.copy(tempFile.toPath(), pluginFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                tempFile.delete();
+
+                scheduler.runSync(() -> {
+                    player.sendMessage("§aPlugin updated successfully!");
+                });
+
+            } else {
+                tempFile.delete();
+                scheduler.runSync(() -> {
+                    player.sendMessage("§cFailed to download update!");
+                    player.sendMessage("§7You can manually download from: §fhttps://www.spigotmc.org/resources/eventvoteplugin.126080/");
+                });
+            }
+
+        } catch (Exception e) {
+            getLogger().log(Level.SEVERE, "Failed to update plugin", e);
+            scheduler.runSync(() -> player.sendMessage("§cError during update: " + e.getMessage()));
+        }
+    }
+
+    private String getLatestVersion() {
+        try {
+            String versionUrl = "https://api.spiget.org/v2/resources/" + SPIGOT_RESOURCE_ID + "/versions/latest";
+
+            URL url = new URL(versionUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("User-Agent", "EventVotePlugin-Updater/1.0");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+
+            getLogger().info("Checking for updates at: " + versionUrl);
+            getLogger().info("Response code: " + connection.getResponseCode());
+
+            if (connection.getResponseCode() == 200) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+
+                    String jsonResponse = response.toString();
+                    getLogger().info("API Response: " + jsonResponse);
+
+                    String version = extractVersionFromJson(jsonResponse);
+                    if (version != null) {
+                        getLogger().info("Extracted version: " + version);
+                        return version;
+                    }
+                }
+            } else {
+                getLogger().warning("API returned non-200 response: " + connection.getResponseCode());
+
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(connection.getErrorStream()))) {
+                    StringBuilder errorResponse = new StringBuilder();
+                    String line;
+                    while ((line = errorReader.readLine()) != null) {
+                        errorResponse.append(line);
+                    }
+                    getLogger().warning("Error response: " + errorResponse.toString());
+                } catch (Exception e) {
+                    getLogger().warning("Could not read error response: " + e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "Failed to get latest version", e);
+        }
+        return null;
+    }
+
+    private String extractVersionFromJson(String jsonResponse) {
+        try {
+            jsonResponse = jsonResponse.trim();
+
+            String namePattern = "\"name\"";
+            int nameIndex = jsonResponse.indexOf(namePattern);
+
+            if (nameIndex != -1) {
+                int colonIndex = jsonResponse.indexOf(":", nameIndex);
+                if (colonIndex != -1) {
+                    int openQuoteIndex = jsonResponse.indexOf("\"", colonIndex);
+                    if (openQuoteIndex != -1) {
+                        int closeQuoteIndex = jsonResponse.indexOf("\"", openQuoteIndex + 1);
+                        if (closeQuoteIndex != -1) {
+                            String version = jsonResponse.substring(openQuoteIndex + 1, closeQuoteIndex);
+
+                            if (!version.trim().isEmpty() &&
+                                    !version.equals("null") &&
+                                    !version.equalsIgnoreCase("EventVotePlugin") &&
+                                    !version.equalsIgnoreCase(getDescription().getName())) {
+
+                                getLogger().info("Successfully extracted version: " + version);
+                                return version;
+                            }
+                        }
+                    }
+                }
+            }
+
+            String[] possibleVersions = jsonResponse.split("\"");
+            for (String segment : possibleVersions) {
+                segment = segment.trim();
+                if (segment.matches("\\d+(\\.\\d+)*") && segment.length() >= 3) {
+                    getLogger().info("Found version pattern: " + segment);
+                    return segment;
+                }
+            }
+
+            getLogger().warning("No version found in JSON. Response: " + jsonResponse);
+
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "Error parsing JSON for version", e);
+        }
+
+        return null;
+    }
+
+    private boolean downloadFile(String fileUrl, File destination) {
+        try {
+            URL url = new URL(fileUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("User-Agent", "EventVotePlugin-Updater");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(30000);
+
+            if (connection.getResponseCode() == 200) {
+                try (InputStream in = connection.getInputStream();
+                     FileOutputStream out = new FileOutputStream(destination)) {
+
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    while ((bytesRead = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, bytesRead);
+                    }
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            getLogger().log(Level.SEVERE, "Failed to download file", e);
+        }
+        return false;
+    }
+
+    private File getPluginFile() {
+        try {
+            File pluginsFolder = getDataFolder().getParentFile();
+            File[] files = pluginsFolder.listFiles((dir, name) ->
+                    name.toLowerCase().startsWith("eventvoteplugin") && name.toLowerCase().endsWith(".jar"));
+
+            if (files != null && files.length > 0) {
+                return files[0];
+            }
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "Could not locate plugin file", e);
+        }
+        return null;
+    }
+
+    private boolean isNewerVersion(String latest, String current) {
+        try {
+            String[] latestParts = latest.replaceAll("[^0-9.]", "").split("\\.");
+            String[] currentParts = current.replaceAll("[^0-9.]", "").split("\\.");
+
+            int maxLength = Math.max(latestParts.length, currentParts.length);
+
+            for (int i = 0; i < maxLength; i++) {
+                int latestPart = i < latestParts.length ? Integer.parseInt(latestParts[i]) : 0;
+                int currentPart = i < currentParts.length ? Integer.parseInt(currentParts[i]) : 0;
+
+                if (latestPart > currentPart) return true;
+                if (latestPart < currentPart) return false;
+            }
+
+            return false;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -199,7 +463,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
 
         if (args.length == 1) {
             List<String> allOptions = Stream.concat(
-                            Arrays.asList("create", "start", "length", "end", "results", "list", "delete", "help").stream(),
+                            Arrays.asList("create", "start", "length", "end", "results", "list", "delete", "update", "help").stream(),
                             getVoteOptions().stream()
                     ).filter(cmd -> cmd.toLowerCase().startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
@@ -348,6 +612,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
             }
 
             activeVote.end();
+            activeVote.setExpiredNotified(true);
             player.sendMessage("§aVote §e" + activeVote.getName() + "§a has been ended!");
             broadcastMessage("§6§l[VOTE] §cVote ended: §e" + activeVote.getName());
 
@@ -377,6 +642,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
             }
 
             vote.end();
+            vote.setExpiredNotified(true);
             player.sendMessage("§aVote §e" + vote.getName() + "§a has been ended!");
             broadcastMessage("§6§l[VOTE] §cVote ended: §e" + vote.getName());
 
@@ -582,7 +848,7 @@ public final class EventVotePlugin extends JavaPlugin implements CommandExecutor
         long mostRecentExpiredTime = 0;
 
         for (Vote vote : activeVotes.values()) {
-            if (vote.isStarted() && vote.isExpired() && !vote.wasExpiredNotified()) {
+            if (vote.isStarted() && vote.isExpired() && !vote.wasExpiredNotified() && !vote.isManuallyEnded()) {
                 long expiredTime = vote.getStartTime() + vote.getDuration();
                 if (expiredTime > mostRecentExpiredTime) {
                     mostRecentExpiredTime = expiredTime;
@@ -804,6 +1070,10 @@ class Vote implements Serializable {
 
     public void setExpiredNotified(boolean notified) {
         this.expiredNotified = notified;
+    }
+
+    public boolean isManuallyEnded() {
+        return manuallyEnded;
     }
 
     public String getName() { return name; }
