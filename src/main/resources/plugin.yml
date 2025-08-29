@@ -1,5 +1,5 @@
 name: EventVotePlugin
-version: 1.0.1
+version: 1.0.2
 main: me.kanuunankuulasplugineventvote.eventVotePlugin.EventVotePlugin
 api-version: 1.21
 author: Kanuunankuula ( If_Master)
@@ -18,4 +18,7 @@ permissions:
     default: op
   eventvote.create:
     description: Creation, Ending, Starting of any events
+    default: op
+  eventvote.update:
+    description: Update & Force update
     default: op
