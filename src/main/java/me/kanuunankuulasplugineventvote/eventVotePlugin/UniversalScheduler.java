@@ -93,7 +93,7 @@ public class UniversalScheduler {
                 plugin.getLogger().warning("Failed to use Folia delayed scheduler: " + e.getMessage());
                 new Thread(() -> {
                     try {
-                        Thread.sleep(delay * 50); 
+                        Thread.sleep(delay * 50);
                         task.run();
                     } catch (InterruptedException ex) {
                         Thread.currentThread().interrupt();
